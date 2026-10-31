@@ -12,8 +12,9 @@ pure function `build_command()` and the tests in
 
 - HID class: Windows loads the stock HID driver by itself — **no driver install, and
   no need to swap in WinUSB/libusb (Zadig)**.
-- It exposes **two HID interfaces** (`MI_00` and `MI_01`). **Only `MI_01` (index 1)
-  responds.**
+- It exposes **two HID interfaces** (`MI_00` and `MI_01`). **Only `MI_01` responds.**
+  Pick it **by name** (the device path contains `mi_01`), never by position in the
+  list: the order Windows returns is not stable.
 - 9-byte output report: report ID `0` + 8 data bytes.
 
 ## Every command is two reports, back to back
@@ -59,6 +60,11 @@ Values checked physically: `0x7F` heart · `0xEF` red head · `0xF7` wings up ·
 - Combinations work: a single byte can carry heart, color, wings and swivel at once.
 
 ## Gotchas
+
+- **The interface order flips.** After a reboot (and new device nodes) Windows listed
+  `MI_01` first instead of second. Writing to `MI_00` is accepted silently and does
+  nothing, so everything *looks* healthy while the figurine stays dark. Select the
+  interface by name; there is no read-back, so a successful write proves nothing.
 
 - **Dead HID handle while the device is still there.** In the middle of a session a
   write can fail with `HIDError: Error device disconnected before write` while

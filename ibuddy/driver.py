@@ -19,7 +19,7 @@ except ImportError:  # lets the rest of the project be imported (and tested) off
 
 VID = 0x1130
 PID = 0x0001
-INTERFACE_INDEX = 1  # MI_01 - the only interface that responds
+INTERFACE_NAME = "mi_01"  # the only interface that responds; matched in the device path
 
 SETUP = [0x22, 0x09, 0x00, 0x02, 0x01, 0x00, 0x00, 0x00]
 MESSAGE_PREFIX = [0x55, 0x53, 0x42, 0x43, 0x00, 0x40, 0x02]
@@ -73,6 +73,19 @@ def build_command(heart=False, red=False, green=False, blue=False,
     return cmd
 
 
+def pick_interface(devices):
+    """Pick the interface that responds (MI_01) by NAME, never by position.
+
+    The order of the list Windows returns is not stable: it flipped after a
+    reboot, and writing to the other interface (MI_00) is accepted silently and
+    does nothing - the daemon reported healthy writes while the figurine stayed dark.
+    """
+    for dev in devices:
+        if INTERFACE_NAME in dev.device_path.lower():
+            return dev
+    raise IBuddyNotFoundError("i-buddy found, but without its MI_01 interface")
+
+
 class IBuddy:
     def __init__(self):
         self._dev = None
@@ -84,11 +97,11 @@ class IBuddy:
                 "pywinusb is not available (Windows only: pip install pywinusb)"
             )
         devices = hid.HidDeviceFilter(vendor_id=VID, product_id=PID).get_devices()
-        if not devices or len(devices) <= INTERFACE_INDEX:
+        if not devices:
             raise IBuddyNotFoundError(
                 "i-buddy not found (VID_1130 PID_0001). Check that it is plugged in."
             )
-        self._dev = devices[INTERFACE_INDEX]
+        self._dev = pick_interface(devices)
         self._dev.open()
         return self
 

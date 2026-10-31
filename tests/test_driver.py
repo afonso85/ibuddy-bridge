@@ -1,7 +1,10 @@
+import types
 import unittest
+from unittest import mock
 
+import ibuddy.driver as driver_module
 from ibuddy.driver import (
-    IBuddy, IBuddyNotFoundError, HIDError, build_command, SETUP, MESSAGE_PREFIX,
+    IBuddy, IBuddyNotFoundError, HIDError, build_command, pick_interface, SETUP, MESSAGE_PREFIX,
 )
 
 
@@ -78,6 +81,36 @@ class WireFormatTest(unittest.TestCase):
         b._dev = dev
         b.close()
         self.assertEqual(dev.sent[-1], [0] + MESSAGE_PREFIX + [0xFF])
+
+
+MI_00 = types.SimpleNamespace(device_path=r"\\?\hid#vid_1130&pid_0001&mi_00#8&146095d7&0&0000#{guid}")
+MI_01 = types.SimpleNamespace(device_path=r"\\?\HID#VID_1130&PID_0001&MI_01#8&1307999&0&0000#{guid}")
+
+
+class InterfaceSelectionTest(unittest.TestCase):
+    """Regression: after a reboot Windows returned the interfaces in the opposite
+    order, the driver kept using position 1 (now MI_00, which ignores everything)
+    and the figurine stayed dark while every write 'succeeded'."""
+
+    def test_picks_mi_01_whatever_the_order(self):
+        self.assertIs(pick_interface([MI_00, MI_01]), MI_01)
+        self.assertIs(pick_interface([MI_01, MI_00]), MI_01)
+
+    def test_missing_mi_01_is_an_error_not_a_silent_wrong_choice(self):
+        with self.assertRaises(IBuddyNotFoundError):
+            pick_interface([MI_00])
+
+    def test_connect_opens_the_right_interface(self):
+        for order in ([MI_00, MI_01], [MI_01, MI_00]):
+            opened = []
+            for d in (MI_00, MI_01):
+                d.open = lambda d=d: opened.append(d)
+            fake_hid = types.SimpleNamespace(
+                HidDeviceFilter=lambda **kw: types.SimpleNamespace(get_devices=lambda: list(order)))
+            with mock.patch.object(driver_module, "hid", fake_hid):
+                b = IBuddy().connect()
+            self.assertIs(b._dev, MI_01)
+            self.assertEqual(opened, [MI_01])
 
 
 if __name__ == "__main__":

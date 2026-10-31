@@ -12,8 +12,9 @@ a função pura `build_command()` e os testes em
 
 - Classe HID: o Windows carrega o driver HID genérico sozinho — **não é preciso
   instalar driver, nem trocar por WinUSB/libusb (Zadig)**.
-- Expõe **duas interfaces HID** (`MI_00` e `MI_01`). **Só a `MI_01` (índice 1)
-  responde.**
+- Expõe **duas interfaces HID** (`MI_00` e `MI_01`). **Só a `MI_01` responde.**
+  Escolha-a **pelo nome** (o caminho do dispositivo contém `mi_01`), nunca pela
+  posição na lista: a ordem que o Windows devolve não é estável.
 - Output report de 9 bytes: report ID `0` + 8 bytes de dados.
 
 ## Cada comando = dois reports em sequência
@@ -60,6 +61,12 @@ Valores conferidos fisicamente: `0x7F` coração · `0xEF` cabeça vermelha ·
 - Combinações valem: o mesmo byte pode ter coração, cor, asas e giro ao mesmo tempo.
 
 ## Armadilhas
+
+- **A ordem das interfaces inverte.** Depois de um boot (e de novos nós de dispositivo)
+  o Windows listou a `MI_01` primeiro em vez de segundo. Escrever na `MI_00` é aceito
+  em silêncio e não faz nada, então tudo *parece* saudável enquanto o boneco fica
+  apagado. Selecione a interface pelo nome; não há leitura de retorno, então uma
+  escrita bem-sucedida não prova nada.
 
 - **Alça HID morta com o aparelho ainda presente.** Em pleno uso, uma escrita
   pode falhar com `HIDError: Error device disconnected before write` enquanto o
