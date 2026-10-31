@@ -1,82 +1,82 @@
-# Protocolo USB do i-buddy
+# i-buddy USB protocol
 
-Notas de engenharia reversa confirmadas **no hardware real** (Tenx Technology,
-USB `VID_1130` / `PID_0001`, string de produto `Tenx USBOUTDEVICE DEMO`).
-A implementação de referência deste repositório é [`ibuddy/driver.py`](../ibuddy/driver.py);
-a função pura `build_command()` e os testes em
-[`tests/test_driver.py`](../tests/test_driver.py) fixam os bytes abaixo.
+**English** · [Português](PROTOCOL.pt-BR.md)
 
-## Dispositivo
+Reverse-engineering notes **confirmed on real hardware** (Tenx Technology, USB
+`VID_1130` / `PID_0001`, product string `Tenx USBOUTDEVICE DEMO`). The reference
+implementation in this repository is [`ibuddy/driver.py`](../ibuddy/driver.py); the
+pure function `build_command()` and the tests in
+[`tests/test_driver.py`](../tests/test_driver.py) pin down the bytes below.
 
-- Classe HID: o Windows carrega o driver HID genérico sozinho — **não é preciso
-  instalar driver, nem trocar por WinUSB/libusb (Zadig)**.
-- Expõe **duas interfaces HID** (`MI_00` e `MI_01`). **Só a `MI_01` (índice 1)
-  responde.**
-- Output report de 9 bytes: report ID `0` + 8 bytes de dados.
+## The device
 
-## Cada comando = dois reports em sequência
+- HID class: Windows loads the stock HID driver by itself — **no driver install, and
+  no need to swap in WinUSB/libusb (Zadig)**.
+- It exposes **two HID interfaces** (`MI_00` and `MI_01`). **Only `MI_01` (index 1)
+  responds.**
+- 9-byte output report: report ID `0` + 8 data bytes.
 
-Enviados com `HidD_SetOutputReport` (em Python, `pywinusb`:
-`dev.send_output_report([0] + dados)`), um logo após o outro:
+## Every command is two reports, back to back
 
-| Ordem | Dados (8 bytes) | Função |
+Sent with `HidD_SetOutputReport` (in Python, `pywinusb`:
+`dev.send_output_report([0] + data)`), one right after the other:
+
+| Order | Data (8 bytes) | Role |
 |---|---|---|
-| 1 | `22 09 00 02 01 00 00 00` | SETUP, constante |
-| 2 | `55 53 42 43 00 40 02 <cmd>` | MESSAGE: assinatura `"USBC"` + byte de comando |
+| 1 | `22 09 00 02 01 00 00 00` | SETUP, constant |
+| 2 | `55 53 42 43 00 40 02 <cmd>` | MESSAGE: `"USBC"` signature + command byte |
 
-Sem a assinatura (ou sem o SETUP antes), o firmware **ignora tudo em silêncio**
-— sem erro algum. Foi assim que "mandar `0xFF` em tudo" não fazia nada.
+Without the signature (or without the SETUP first), the firmware **silently ignores
+everything** — no error at all. That is why "sending `0xFF` everywhere" did nothing.
 
-## Byte de comando
+## The command byte
 
-Bitfield **ativo em zero**: `0xFF` é o estado neutro (tudo apagado, sem movimento);
-zerar um bit liga o recurso.
+An **active-low** bitfield: `0xFF` is the neutral state (everything off, no motion);
+clearing a bit turns the feature on.
 
-| Bit | Recurso | Observação |
+| Bit | Feature | Notes |
 |---|---|---|
-| 7 | Coração | LED vermelho fixo (liga/desliga) |
-| 6 | Cabeça — azul | |
-| 5 | Cabeça — verde | |
-| 4 | Cabeça — vermelho | |
-| 3 | Asas — pulso "para cima" | |
-| 2 | Asas — pulso "para baixo" | |
-| 1 | Giro — direita | |
-| 0 | Giro — esquerda | |
+| 7 | Heart | fixed red LED (on/off) |
+| 6 | Head — blue | |
+| 5 | Head — green | |
+| 4 | Head — red | |
+| 3 | Wings — "up" pulse | |
+| 2 | Wings — "down" pulse | |
+| 1 | Swivel — right | |
+| 0 | Swivel — left | |
 
-Valores conferidos fisicamente: `0x7F` coração · `0xEF` cabeça vermelha ·
-`0xF7` asas para cima · `0xFB` asas para baixo · `0xFD` giro à direita ·
-`0x0F` coração + cabeça branca.
+Values checked physically: `0x7F` heart · `0xEF` red head · `0xF7` wings up ·
+`0xFB` wings down · `0xFD` swivel right · `0x0F` heart + white head.
 
-## Comportamento físico
+## Physical behavior
 
-- **Cabeça**: cada canal só liga ou desliga (sem PWM), então há 7 cores:
-  vermelho, verde, azul, amarelo (R+G), ciano (G+B), roxo (R+B) e branco. No
-  aparelho testado o "amarelo" sai esverdeado, porque o LED verde é mais forte.
-- **Asas**: manter um estado fixo **não move nada**. Para bater é preciso
-  alternar "para cima"/"para baixo" a cada ~0,2 s (comporta-se como solenoide).
-- **Giro**: cada pulso gira um ângulo pequeno e incremental.
-- Combinações valem: o mesmo byte pode ter coração, cor, asas e giro ao mesmo tempo.
+- **Head**: each channel is simply on or off (no PWM), so there are 7 colors: red,
+  green, blue, yellow (R+G), cyan (G+B), purple (R+B) and white. On the unit
+  tested, "yellow" comes out greenish because the green LED is stronger.
+- **Wings**: holding a fixed state **moves nothing**. To flap you have to alternate
+  "up"/"down" every ~0.2 s (it behaves like a solenoid).
+- **Swivel**: each pulse turns a small, incremental angle.
+- Combinations work: a single byte can carry heart, color, wings and swivel at once.
 
-## Armadilhas
+## Gotchas
 
-- **Alça HID morta com o aparelho ainda presente.** Em pleno uso, uma escrita
-  pode falhar com `HIDError: Error device disconnected before write` enquanto o
-  Windows ainda enumera o dispositivo (típico de suspensão seletiva da porta
-  USB). A saída é descartar a alça e reabrir; não precisa replugar.
-- **Mecanismo das asas em unidades antigas.** Pode deixar de responder depois de
-  muita atuação (os LEDs seguem normais). Replugar o cabo costuma restaurar.
-- **Vários processos.** Duas alças abertas ao mesmo tempo funcionam, mas os
-  comandos se misturam — por isso o daemon é o dono único do aparelho
-  (`ibuddy/worker.py`) e `cli.py`/`demo.py` o pausam enquanto rodam.
-- Só o `PID_0001` foi testado. O projeto de referência `py3buddy` menciona
-  outros PIDs (`0002`, `0004`, `0005`) para variantes do produto.
+- **Dead HID handle while the device is still there.** In the middle of a session a
+  write can fail with `HIDError: Error device disconnected before write` while
+  Windows still enumerates the device (typical of USB selective suspend). The fix
+  is to drop the handle and reopen it; there is no need to replug.
+- **Wing mechanism on old units.** It can stop responding after a lot of use (the
+  LEDs keep working). Replugging the cable usually restores it.
+- **Several processes.** Two open handles work at the same time, but their commands
+  get mixed — which is why the daemon is the device's sole owner
+  (`ibuddy/worker.py`) and `cli.py`/`demo.py` pause it while they run.
+- Only `PID_0001` was tested. The `py3buddy` reference project mentions other PIDs
+  (`0002`, `0004`, `0005`) for variants of the product.
 
-## Origem
+## Origin
 
-Os bytes foram identificados a partir de dois projetos abertos que usam
-transferências de controle via libusb (`bmRequestType 0x21`, `bRequest 0x09`,
-`wValue 2`, `wIndex 1`) e depois **confirmados e adaptados** ao caminho HID
-padrão do Windows:
+The bytes were identified from two open projects that use libusb control transfers
+(`bmRequestType 0x21`, `bRequest 0x09`, `wValue 2`, `wIndex 1`) and were then
+**confirmed and adapted** to the standard Windows HID path:
 
 - [armijnhemel/py3buddy](https://github.com/armijnhemel/py3buddy) (MIT)
 - [ewall/pybuddy](https://github.com/ewall/pybuddy)

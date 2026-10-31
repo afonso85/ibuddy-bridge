@@ -1,55 +1,58 @@
-# iBuddy Bridge — extensão do Chrome
+# iBuddy Bridge — Chrome extension
 
-Lê o uso da **janela de 5 horas** da sua conta Claude (o mesmo número da aba
-"Uso" do app) e avisa o daemon do i-buddy, para a cabeça mudar de cor conforme o
-consumo e o coração pulsar quando a janela renova.
+**English** · [Português](README.pt-BR.md)
 
-## Como funciona
+Reads the usage of your account's **5-hour window** (the same number as the app's
+"Usage" tab) and tells the i-buddy daemon, so the head changes color with your
+consumption and the heart pulses when the window renews.
 
-- Usa a sessão que **já está logada** no seu Chrome (como os trackers de uso que
-  existem na loja): sem token, sem senha, sem cofre.
-- Faz duas leituras em `claude.ai`: `/api/organizations` e
-  `/api/organizations/{id}/usage`. **Esse endpoint não é documentado nem
-  oficial** — pode mudar ou quebrar sem aviso.
-- A **única coisa que sai** da extensão é o nível (`low`/`medium`/`high`/`critical`)
-  enviado ao daemon em `127.0.0.1:8765`. Nada vai para a internet.
-- Roda no *service worker* da extensão (e não na página) para conseguir falar com
-  o `localhost` sem o bloqueio de *Private Network Access* do Chrome.
-- Em vez de consultar a cada X minutos, mantém uma conexão aberta com o daemon
-  (`/wait-activity`) que só retorna quando uma resposta termina (ou a cada ~25 s,
-  como pulso de segurança). Assim a cor reage logo após um pico de consumo, sem
-  martelar o `claude.ai`. Um alarme de 1 minuto continua como rede de segurança.
+## How it works
 
-## Instalação (uma vez)
+- It uses the session that is **already logged in** in your Chrome (like the usage
+  trackers in the store): no token, no password, no vault.
+- It makes two reads on `claude.ai`: `/api/organizations` and
+  `/api/organizations/{id}/usage`. **That endpoint is undocumented and unofficial**
+  — it can change or break without notice.
+- The **only thing that leaves** the extension is the level
+  (`low`/`medium`/`high`/`critical`), sent to the daemon at `127.0.0.1:8765`.
+  Nothing goes to the internet.
+- It runs in the extension's *service worker* (not in the page) so it can talk to
+  `localhost` without Chrome's Private Network Access block.
+- Instead of polling every X minutes, it keeps a connection open to the daemon
+  (`/wait-activity`) that only returns when a response finishes (or every ~25 s as
+  a safety heartbeat). The color therefore reacts soon after a burst of usage
+  without hammering `claude.ai`. A 1-minute alarm remains as a safety net.
 
-1. Abra `chrome://extensions` e ligue o **Modo do desenvolvedor**.
-2. Clique em **Carregar sem compactação** e selecione esta pasta
-   (`chrome-extension/`, dentro do repositório).
-3. Fique logado em `claude.ai` e deixe o daemon rodando.
+## Install (once)
 
-Depois de editar `background.js`, recarregue a extensão (botão ↻ no card).
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and select this folder (`chrome-extension/`, inside the
+   repository).
+3. Stay logged in to `claude.ai` and keep the daemon running.
 
-## Cores
+After editing `background.js`, reload the extension (↻ button on its card).
 
-| Uso da janela de 5 h | Cabeça |
+## Colors
+
+| 5-hour window usage | Head |
 |---|---|
-| menos de 50 % | verde |
-| 50 a 74 % | azul |
-| 75 a 84 % | roxo |
-| 85 % ou mais | vermelho |
+| under 50 % | green |
+| 50 to 74 % | blue |
+| 75 to 84 % | purple |
+| 85 % or more | red |
 
-O coração pulsa quando o uso **cai** de uma leitura para a outra (dentro de uma
-janela o uso só sobe; queda = a janela renovou). Comparar o horário `resets_at`
-não funciona: a API devolve esse valor com ruído de milissegundos, e quando o
-horário real cai perto de uma virada de minuto o ruído cruza a fronteira e
-dispara um falso positivo a cada leitura.
+The heart pulses when usage **drops** from one reading to the next (within a window
+usage only goes up, so a drop means the window renewed). Comparing the `resets_at`
+timestamp doesn't work: the API returns it with millisecond noise, and when the
+real reset time falls near a minute boundary the noise crosses it and triggers a
+false positive on every reading.
 
-## Limitação
+## Limitation
 
-Só atualiza com o Chrome aberto e logado. Se fechar o Chrome, a cor congela no
-último valor lido.
+It only updates while Chrome is open and logged in. If you close Chrome, the color
+freezes at the last value read.
 
-## Testes
+## Tests
 
 ```
 node tests/extension/test_background.mjs

@@ -1,69 +1,78 @@
 # iBuddy Bridge
 
-Transforma o **i-buddy** — a figurinha USB do MSN Messenger (2007) — num painel
-físico de notificações para o **app Claude** no Windows: a cabeça mostra o quanto
-da janela de 5 horas você já gastou, o coração pulsa quando ela renova, as asas
-batem quando uma resposta termina e o corpo gira quando o Claude está esperando
-você.
+**English** · [Português](README.pt-BR.md)
 
-> Projeto **não oficial**, sem vínculo com a Anthropic. A cor da cabeça e o
-> coração dependem de um endpoint **interno e não documentado** do `claude.ai`,
-> que pode mudar a qualquer momento. Feito para um aparelho de ~15 anos: o
-> mecanismo das asas pode falhar de vez em quando (veja *Limitações*).
+Turn the **i-buddy** — the USB figurine that shipped for MSN Messenger in 2007 —
+into a physical notification panel for the **Claude desktop app** on Windows. The
+head shows how much of your 5-hour usage window you've spent, the heart pulses
+when the window renews, the wings flap when a response finishes, and the body
+swivels when Claude is waiting for you.
 
-## O que cada sinal significa
+> **Unofficial project, not affiliated with or endorsed by Anthropic.** "Claude"
+> is a trademark of Anthropic. The head color and the heart rely on an
+> **internal, undocumented** `claude.ai` endpoint that can change at any time.
+> It was built around a ~15-year-old unit, so the wing mechanism may act up now
+> and then (see *Known limitations*).
 
-| Sinal | Significado | Origem do dado |
+Just own an i-buddy and want to drive it from Python on Windows? You don't need
+any of the Claude parts: see [Use the driver on its own](#use-the-driver-on-its-own)
+and the [protocol notes](docs/PROTOCOL.md). **No driver installation (Zadig, WinUSB)
+is required** — the stock Windows HID driver is enough.
+
+## What each signal means
+
+| Signal | Meaning | Data source |
 |---|---|---|
-| **Cabeça** | Uso da janela de 5 h: verde < 50 %, azul 50–74 %, roxo 75–84 %, vermelho ≥ 85 % | extensão do Chrome |
-| **Coração** | A janela de 5 h renovou | extensão do Chrome |
-| **Asas** | O Claude terminou uma resposta (qualquer conversa ou aba do app) | notificações do Windows |
-| **Giro** | O Claude pediu permissão ou espera sua resposta; repete a cada 60 s, por até 10 min | notificações do Windows |
+| **Head** | 5-hour window usage: green < 50 %, blue 50–74 %, purple 75–84 %, red ≥ 85 % | Chrome extension |
+| **Heart** | The 5-hour window renewed | Chrome extension |
+| **Wings** | Claude finished a response (any conversation or tab in the app) | Windows notifications |
+| **Swivel** | Claude asked for permission or is waiting for you; repeats every 60 s for up to 10 min | Windows notifications |
 
-## Como funciona
+## How it works
 
 ```
- app Claude ──notificação──▶ Windows ──▶ ┐
-                                         ├──▶  daemon (run_daemon.py) ──HID──▶ i-buddy
- claude.ai ◀──sessão── extensão Chrome ──┘          127.0.0.1:8765
+ Claude app ──notification──▶ Windows ──▶ ┐
+                                          ├──▶  daemon (run_daemon.py) ──HID──▶ i-buddy
+ claude.ai ◀──session── Chrome extension ─┘          127.0.0.1:8765
 ```
 
-- **`ibuddy/driver.py`** — protocolo HID do aparelho (veja [docs/PROTOCOL.md](docs/PROTOCOL.md)).
-- **`ibuddy/worker.py`** — dono único do aparelho: fila de comandos, estado
-  persistente (cor/coração) por baixo das animações, agendador do giro,
-  reconexão automática.
-- **`ibuddy/server.py`** — API HTTP local, só em `127.0.0.1`.
-- **`ibuddy/notifications.py`** + **`rules.py`** — lê a central de notificações do
-  Windows e classifica cada aviso do Claude.
-- **`chrome-extension/`** — lê o uso na sessão já logada do Chrome ([detalhes](chrome-extension/README.md)).
+- **`ibuddy/driver.py`** — the device's HID protocol ([notes](docs/PROTOCOL.md)).
+- **`ibuddy/worker.py`** — sole owner of the device: command queue, persistent
+  state (color/heart) kept underneath the animations, the swivel scheduler,
+  automatic reconnection.
+- **`ibuddy/server.py`** — local HTTP API, bound to `127.0.0.1` only.
+- **`ibuddy/notifications.py`** + **`rules.py`** — reads the Windows notification
+  center and classifies each Claude notification.
+- **`chrome-extension/`** — reads your usage from the already-logged-in Chrome
+  session ([details](chrome-extension/README.md)).
 
-## Requisitos
+## Requirements
 
-- Windows (testado no 11), Python (testado no 3.13).
-- App desktop do Claude (pacote da Microsoft Store) para asas e giro.
-- Chrome logado em `claude.ai` para cabeça e coração.
-- O i-buddy original, `VID_1130 / PID_0001`.
+- Windows (tested on 11) and Python (tested on 3.13).
+- The Claude desktop app (Microsoft Store package) for wings and swivel.
+- Chrome, logged in to `claude.ai`, for head and heart.
+- The original i-buddy, `VID_1130 / PID_0001`.
 
-## Instalação
+## Install
 
 ```
 pip install -r requirements.txt
 python run_daemon.py
 ```
 
-1. **Autostart** (sobe o daemon escondido a cada logon):
+1. **Autostart** (starts the daemon hidden at every logon):
    `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1`
-   — remova com `-Remove`.
-2. **Extensão** (cabeça e coração): `chrome://extensions` → Modo do desenvolvedor →
-   *Carregar sem compactação* → pasta `chrome-extension/`.
-3. **Notificações**: o Windows pode pedir permissão para o programa ler as
-   notificações (Configurações › Privacidade › Notificações). Sem ela, só as asas
-   e o giro ficam desativados.
+   — remove it with `-Remove`.
+2. **Extension** (head and heart): `chrome://extensions` → Developer mode →
+   *Load unpacked* → the `chrome-extension/` folder.
+3. **Notifications**: Windows may ask whether the program can read your
+   notifications (Settings › Privacy & security › Notifications). Without it only
+   the wings and swivel are disabled.
 
-## Testar à mão
+## Try it by hand
 
 ```
-python demo.py            # coreografia completa (ou dois cliques em Demo.bat)
+python demo.py            # full choreography (or double-click Demo.bat)
 python cli.py head red    # red green blue cyan yellow purple white off
 python cli.py heart on 3
 python cli.py flap 5
@@ -71,76 +80,94 @@ python cli.py swivel right 3
 python cli.py reset
 ```
 
-Com o daemon rodando, `demo.py` e `cli.py` o pausam durante o comando e, ao
-terminar, ele reaplica a cor atual.
+While the daemon is running, `demo.py` and `cli.py` pause it for the duration of
+the command; when they finish it re-applies the current head color.
 
-## API local
+## Use the driver on its own
 
-Só `127.0.0.1:8765`. Pedidos vindos de páginas web (cabeçalho `Origin`) ou com
-`Host` diferente de `localhost`/`127.0.0.1` são recusados com 403; só extensões
-do Chrome e programas locais (curl, Python) passam.
+```python
+import time
+from ibuddy import IBuddy
 
-| Rota | Efeito |
+with IBuddy() as buddy:
+    buddy.set_state(heart=True, blue=True)   # heart + blue head
+    time.sleep(2)
+    buddy.flap(times=5)                      # flap the wings
+```
+
+Leaving the `with` block resets the device. If the daemon is running, stop it
+first (`POST /shutdown`) or use `cli.py`, which pauses it for you.
+
+## Local API
+
+`127.0.0.1:8765` only. Requests coming from web pages (an `Origin` header) or with
+a `Host` other than `localhost`/`127.0.0.1` are refused with 403; only Chrome
+extensions and local programs (curl, Python) get through.
+
+| Route | Effect |
 |---|---|
-| `GET /status` | saúde: conexão, cor, espera, pausa, idade da última escrita no aparelho |
-| `GET /wait-activity?since=N&timeout=S` | long-poll: retorna quando uma resposta termina |
-| `POST /token-level` `{"level": "low\|medium\|high\|critical\|off"}` | cor da cabeça |
-| `POST /session-renewed` `{"times": 3}` | coração pulsa |
-| `POST /response-end` `{"times": 5, "interval": 0.2}` | asas batem |
-| `POST /waiting-start` · `/waiting-stop` | liga/desliga o modo espera (giro) |
-| `POST /swivel-once` `{"pulse_time": 0.5}` | um giro avulso |
-| `POST /pause` `{"seconds": 120}` · `/resume` | silencia o daemon (ele reaplica a cor ao voltar) |
-| `POST /reset` · `/shutdown` | apaga tudo · encerra o daemon |
+| `GET /status` | health: connection, color, waiting, pause, age of the last successful write to the device |
+| `GET /wait-activity?since=N&timeout=S` | long-poll: returns when a response finishes |
+| `POST /token-level` `{"level": "low\|medium\|high\|critical\|off"}` | head color |
+| `POST /session-renewed` `{"times": 3}` | pulse the heart |
+| `POST /response-end` `{"times": 5, "interval": 0.2}` | flap the wings |
+| `POST /waiting-start` · `/waiting-stop` | start/stop waiting mode (swivel) |
+| `POST /swivel-once` `{"pulse_time": 0.5}` | a single swivel |
+| `POST /pause` `{"seconds": 120}` · `/resume` | silence the daemon (it re-applies the color when it resumes) |
+| `POST /reset` · `/shutdown` | turn everything off · stop the daemon |
 
-## Configuração
+## Configuration
 
-- `IBUDDY_DEBUG=1` — log detalhado, **inclui o texto das notificações**. Por
-  padrão o log guarda só a classificação, nunca o texto.
-- `IBUDDY_APP_AUMID` — se o seu app do Claude tiver outro identificador
-  (padrão: `Claude_pzs8sxrjxfjjc!Claude`).
-- Constantes de tempo (giro, expiração, reconexão) no topo de `ibuddy/worker.py`;
-  palavras que indicam "esperando você" em `ibuddy/rules.py`.
+- `IBUDDY_DEBUG=1` — verbose log, **includes notification text**. By default the
+  log keeps only the classification, never the text.
+- `IBUDDY_APP_AUMID` — if your Claude app has a different identifier
+  (default: `Claude_pzs8sxrjxfjjc!Claude`).
+- Timing constants (swivel, expiry, reconnection) at the top of
+  `ibuddy/worker.py`; the keywords that mean "waiting for you" in
+  `ibuddy/rules.py` (the defaults match English and Portuguese notifications).
 
-O log fica em `.state/daemon.log` (rotativo, 1 MB × 3) e **não é versionado**.
+The log lives in `.state/daemon.log` (rotating, 1 MB × 3) and is **not versioned**.
 
-## Limitações conhecidas
+## Known limitations
 
-- **Cabeça e coração só atualizam com o Chrome aberto e logado.** Se fechar, a cor congela.
-- **Asas dependem de o Windows exibir a notificação de "resposta pronta".** Se
-  ela não aparecer (por exemplo, com o app em foco ou no modo Não Perturbe), o
-  boneco não bate as asas.
-- **O giro não sabe quando você respondeu**: ele desiste sozinho após 10 min.
-- **Hooks e statusline do Claude Code não funcionam na aba *Code* do app desktop**
-  (testado: nunca foram chamados). Por isso o projeto usa notificações do Windows
-  e a extensão.
-- O endpoint de uso do `claude.ai` é não oficial.
-- O mecanismo das asas de aparelhos antigos pode parar de responder; replugar o
-  cabo costuma resolver. Os LEDs não são afetados.
+- **Head and heart only update while Chrome is open and logged in.** Close it and
+  the color freezes at the last value.
+- **Wings depend on Windows showing the "response ready" notification.** If it
+  doesn't appear (for example with the app in focus, or in Do Not Disturb), the
+  figurine won't flap.
+- **The swivel can't tell when you've answered**, so it gives up on its own after 10 min.
+- **Claude Code hooks and the statusline don't run in the desktop app's *Code* tab**
+  (tested: they were never called). That's why this project uses Windows
+  notifications and the extension.
+- The `claude.ai` usage endpoint is unofficial.
+- The wing mechanism of old units can stop responding; replugging the cable
+  usually fixes it. The LEDs are unaffected.
+- Notification matching is keyword-based, and tuned to English and Portuguese.
 
-## Solução de problemas
+## Troubleshooting
 
-- `curl http://127.0.0.1:8765/status` — `last_write_ok_s_ago` mostra há quanto
-  tempo o aparelho aceitou uma escrita; `connected: false` = o daemon está
-  tentando reconectar (a cada 30 s).
-- `.state/daemon.log` — reconexões, avisos e erros.
-- Nada acontece nas asas/giro: confira a permissão de notificações e rode com
+- `curl http://127.0.0.1:8765/status` — `last_write_ok_s_ago` is how long ago the
+  device last accepted a write; `connected: false` means the daemon is trying to
+  reconnect (every 30 s).
+- `.state/daemon.log` — reconnections, warnings and errors.
+- Wings/swivel do nothing: check the notification permission and run with
   `IBUDDY_DEBUG=1`.
 
-## Testes
+## Tests
 
 ```
 python -m unittest discover -s tests -v
 node tests/extension/test_background.mjs
 ```
 
-Não tocam no aparelho: usam um dispositivo falso e um relógio controlável.
+They never touch the device: they use a fake device and a controllable clock.
 
-## Créditos
+## Credits
 
-O protocolo foi levantado a partir de
-[py3buddy](https://github.com/armijnhemel/py3buddy) (Armijn Hemel, MIT) e
-[pybuddy](https://github.com/ewall/pybuddy) (ewall), e confirmado no hardware.
+The protocol was worked out from
+[py3buddy](https://github.com/armijnhemel/py3buddy) (Armijn Hemel, MIT) and
+[pybuddy](https://github.com/ewall/pybuddy) (ewall), and confirmed on hardware.
 
-## Licença
+## License
 
-Ainda não definida.
+[MIT](LICENSE).
