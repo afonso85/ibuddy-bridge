@@ -1,11 +1,12 @@
-"""Listener de notificacoes do Windows: observa a central de notificacoes e
-reage a notificacoes novas do app Claude (qualquer aba, chat ou Code).
+"""Windows notification listener: watches the notification center and reacts to
+new notifications from the Claude app (any tab, chat or Code).
 
-Usa polling em vez do evento notification_changed porque o evento WinRT exige
-identidade de pacote (app empacotado), o que um processo Python solto nao tem.
+It polls instead of using the WinRT notification_changed event, because that
+event requires package identity (a packaged app), which a plain Python process
+does not have.
 
-Privacidade: o texto das notificacoes (titulos de conversa, comandos) NAO vai
-para o log; so a classificacao. Para depurar as regras: IBUDDY_DEBUG=1.
+Privacy: the notification text (conversation titles, commands) does NOT go to the
+log; only the classification does. To debug the rules: IBUDDY_DEBUG=1.
 """
 import asyncio
 import logging
@@ -22,8 +23,8 @@ from .rules import classify
 
 log = logging.getLogger("ibuddy.notifications")
 
-# AUMID do app desktop do Claude (pacote da Microsoft Store). Pode ser
-# sobrescrito se o seu for diferente: IBUDDY_APP_AUMID=...
+# AUMID of the Claude desktop app (Microsoft Store package). It can be
+# overridden if yours differs: IBUDDY_APP_AUMID=...
 CLAUDE_AUMID = os.environ.get("IBUDDY_APP_AUMID", "Claude_pzs8sxrjxfjjc!Claude")
 POLL_INTERVAL = 2.0
 
@@ -44,10 +45,10 @@ class NotificationWatcher(threading.Thread):
         if status != UserNotificationListenerAccessStatus.ALLOWED:
             status = await listener.request_access_async()
             if status != UserNotificationListenerAccessStatus.ALLOWED:
-                # o resto do daemon segue funcionando (cor e coracao)
-                log.warning("sem permissao para ler notificacoes do Windows "
-                            "(Configuracoes > Privacidade > Notificacoes): "
-                            "asas e giro desativados")
+                # the rest of the daemon keeps working (color and heart)
+                log.warning("no permission to read Windows notifications "
+                            "(Settings > Privacy & security > Notifications): "
+                            "wings and swivel disabled")
                 return
 
         last_error = None
@@ -57,8 +58,8 @@ class NotificationWatcher(threading.Thread):
                 last_error = None
             except Exception as e:
                 msg = f"{type(e).__name__}: {e}"
-                if msg != last_error:  # nao enche o log se o erro se repetir a cada 2s
-                    log.warning("falha ao ler notificacoes: %s", msg)
+                if msg != last_error:  # don't flood the log if the error repeats every 2s
+                    log.warning("failed to read notifications: %s", msg)
                     last_error = msg
             await asyncio.sleep(POLL_INTERVAL)
 
@@ -74,7 +75,7 @@ class NotificationWatcher(threading.Thread):
                     continue
                 self._on_claude_notification(n)
             except Exception:
-                log.exception("erro tratando uma notificacao")
+                log.exception("error handling a notification")
         self._seen_ids = current_ids
         self._first_poll = False
 
@@ -89,8 +90,8 @@ class NotificationWatcher(threading.Thread):
     def _on_claude_notification(self, n):
         text = self._texts_of(n)
         kind = classify(text)
-        log.info("notificacao -> %s", kind)
-        log.debug("texto da notificacao: %r", text)
+        log.info("notification -> %s", kind)
+        log.debug("notification text: %r", text)
         if kind == "waiting":
             self._worker.submit("waiting_start")
         elif kind == "done":

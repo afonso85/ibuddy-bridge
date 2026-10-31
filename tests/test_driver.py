@@ -22,7 +22,7 @@ class FakeHid:
 
 
 class BuildCommandTest(unittest.TestCase):
-    """Bytes validados fisicamente no aparelho (ver docs/PROTOCOL.md)."""
+    """Bytes validated physically on the device (see docs/PROTOCOL.md)."""
 
     def test_neutral(self):
         self.assertEqual(build_command(), 0xFF)
@@ -41,7 +41,7 @@ class BuildCommandTest(unittest.TestCase):
         self.assertEqual(build_command(swivel="left"), 0xFE)
 
     def test_effects_combine(self):
-        # observado ao vivo: 0x0F = coracao + cabeca branca (bits 7,6,5,4 zerados)
+        # observed live: 0x0F = heart + white head (bits 7,6,5,4 cleared)
         self.assertEqual(build_command(heart=True, red=True, green=True, blue=True), 0x0F)
 
 
@@ -68,7 +68,7 @@ class WireFormatTest(unittest.TestCase):
         b = IBuddy()
         dev = FakeHid(fail=True)
         b._dev = dev
-        b.close()  # nao pode levantar
+        b.close()  # must not raise
         self.assertTrue(dev.closed)
         self.assertIsNone(b._dev)
 

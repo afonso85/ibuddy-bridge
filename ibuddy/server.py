@@ -1,12 +1,12 @@
-"""API HTTP local (so 127.0.0.1) para a extensao do Chrome e scripts pedirem
-animacoes ao i-buddy sem tocar no HID diretamente.
+"""Local HTTP API (127.0.0.1 only) for the Chrome extension and scripts to ask the
+i-buddy for animations without touching the HID directly.
 
-Seguranca: qualquer site aberto no navegador consegue disparar requisicoes para
-127.0.0.1 (o CORS so impede de ler a resposta, nao de executar a acao). Por
-isso o servidor recusa pedidos com 'Origin' que nao seja de uma extensao do
-Chrome (navegadores sempre enviam Origin em POST entre origens e o JavaScript
-da pagina nao consegue forja-lo) e valida o cabecalho 'Host' (anti DNS
-rebinding). Programas locais (curl, python) nao enviam Origin e passam.
+Security: any website open in the browser can send requests to 127.0.0.1 (CORS
+only stops it from reading the response, not from triggering the action). So the
+server refuses requests whose 'Origin' is not a Chrome extension (browsers always
+send Origin on cross-origin POSTs and page JavaScript cannot forge it) and
+validates the 'Host' header (anti DNS rebinding). Local programs (curl, Python)
+send no Origin and get through.
 """
 import json
 import logging
@@ -21,7 +21,7 @@ log = logging.getLogger("ibuddy.server")
 HOST = "127.0.0.1"
 PORT = 8765
 
-MAX_WAIT_TIMEOUT = 30.0  # segundos - teto de seguranca para o long-poll
+MAX_WAIT_TIMEOUT = 30.0  # seconds - safety cap for the long-poll
 MAX_BODY_BYTES = 64 * 1024
 EXTENSION_ORIGIN_PREFIX = "chrome-extension://"
 
@@ -47,7 +47,7 @@ class _BadRequest(Exception):
 
 
 def _num(body, key, default, lo, hi, cast=float):
-    """Le um numero do corpo com limites; valor invalido cai no padrao."""
+    """Read a number from the body within limits; an invalid value falls back to the default."""
     try:
         value = cast(body.get(key, default))
     except (TypeError, ValueError):
@@ -58,9 +58,9 @@ def _num(body, key, default, lo, hi, cast=float):
 def make_handler(worker):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt, *args):
-            pass  # silencioso - isto roda o tempo todo em segundo plano
+            pass  # silent - this runs in the background all the time
 
-        # --- respostas ---
+        # --- responses ---
 
         def _extension_origin(self):
             origin = self.headers.get("Origin")
@@ -80,10 +80,10 @@ def make_handler(worker):
             self.end_headers()
             self.wfile.write(body)
 
-        # --- protecao ---
+        # --- protection ---
 
         def _guard(self):
-            """False (ja respondeu 403) se o pedido nao deve ser atendido."""
+            """False (after replying 403) if the request must not be served."""
             allowed = {f"127.0.0.1:{self.server.server_address[1]}",
                        f"localhost:{self.server.server_address[1]}"}
             host = self.headers.get("Host")
@@ -111,7 +111,7 @@ def make_handler(worker):
                 return {}
             return data if isinstance(data, dict) else {}
 
-        # --- metodos ---
+        # --- methods ---
 
         def do_OPTIONS(self):
             if not self._guard():
@@ -154,7 +154,7 @@ def make_handler(worker):
             except _BadRequest as e:
                 self._reply(e.code, {"error": e.message})
                 return
-            if self.path != "/token-level":  # esse e barulhento (1/min), o resto vale logar
+            if self.path != "/token-level":  # that one is noisy (1/min); the rest is worth logging
                 log.info("POST %s %s", self.path, body)
 
             path = self.path

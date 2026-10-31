@@ -7,13 +7,13 @@ from ibuddy.server import make_server
 from fakes import FakeWorker
 
 EXT = "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
-WEB = "https://site-qualquer.example"
+WEB = "https://any-website.example"
 
 
 class ServerBase(unittest.TestCase):
     def setUp(self):
         self.worker = FakeWorker()
-        self.server = make_server(self.worker, port=0)   # porta livre qualquer
+        self.server = make_server(self.worker, port=0)   # any free port
         self.port = self.server.server_address[1]
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
@@ -36,8 +36,8 @@ class ServerBase(unittest.TestCase):
 
 
 class OriginAndHostProtectionTest(ServerBase):
-    """Qualquer site aberto no navegador consegue mandar requisicoes para
-    127.0.0.1; o servidor tem que recusar as que nao vem de uma extensao."""
+    """Any website open in the browser can send requests to 127.0.0.1; the server
+    has to refuse the ones that do not come from an extension."""
 
     def test_plain_local_clients_are_allowed(self):
         status, _, body = self.request("GET", "/status")
@@ -45,7 +45,7 @@ class OriginAndHostProtectionTest(ServerBase):
         self.assertEqual(body, {"connected": True})
 
     def test_web_origin_cannot_trigger_actions(self):
-        for ctype in ("application/json", "text/plain"):   # text/plain nao tem preflight
+        for ctype in ("application/json", "text/plain"):   # text/plain has no preflight
             status, headers, _ = self.request(
                 "POST", "/response-end", {"times": 1},
                 {"Origin": WEB, "Content-Type": ctype})
@@ -73,9 +73,9 @@ class OriginAndHostProtectionTest(ServerBase):
         self.assertEqual(status, 403)
 
     def test_dns_rebinding_host_is_refused(self):
-        status, _, _ = self.request("GET", "/status", None, {"Host": "atacante.example:8765"})
+        status, _, _ = self.request("GET", "/status", None, {"Host": "attacker.example:8765"})
         self.assertEqual(status, 403)
-        status, _, _ = self.request("POST", "/reset", {}, {"Host": "atacante.example"})
+        status, _, _ = self.request("POST", "/reset", {}, {"Host": "attacker.example"})
         self.assertEqual(status, 403)
         self.assertEqual(self.worker.calls, [])
 
@@ -98,11 +98,11 @@ class OriginAndHostProtectionTest(ServerBase):
 
 class RoutesTest(ServerBase):
     def test_unknown_route(self):
-        self.assertEqual(self.request("POST", "/nada", {})[0], 404)
-        self.assertEqual(self.request("GET", "/nada")[0], 404)
+        self.assertEqual(self.request("POST", "/nothing", {})[0], 404)
+        self.assertEqual(self.request("GET", "/nothing")[0], 404)
 
     def test_invalid_level_is_rejected(self):
-        status, _, _ = self.request("POST", "/token-level", {"level": "roxo-choque"})
+        status, _, _ = self.request("POST", "/token-level", {"level": "shocking-purple"})
         self.assertEqual(status, 400)
         status, _, _ = self.request("POST", "/token-level", {})
         self.assertEqual(status, 400)
@@ -131,7 +131,7 @@ class RoutesTest(ServerBase):
         try:
             conn.putrequest("POST", "/reset")
             conn.putheader("Content-Length", str(10 * 1024 * 1024))
-            conn.endheaders()                      # o corpo nunca e enviado
+            conn.endheaders()                      # the body is never sent
             self.assertEqual(conn.getresponse().status, 413)
         finally:
             conn.close()
@@ -140,7 +140,7 @@ class RoutesTest(ServerBase):
     def test_invalid_json_is_treated_as_empty(self):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
         try:
-            conn.request("POST", "/waiting-start", body=b"{nao e json")
+            conn.request("POST", "/waiting-start", body=b"{not json")
             self.assertEqual(conn.getresponse().status, 200)
         finally:
             conn.close()

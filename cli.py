@@ -1,14 +1,14 @@
-"""CLI simples para testar o i-buddy manualmente.
+"""Simple CLI to try the i-buddy by hand.
 
-Exemplos:
-    python cli.py heart on [segundos]     (padrao: 2s)
+Examples:
+    python cli.py heart on [seconds]      (default: 2s)
     python cli.py head red                (red green blue cyan yellow purple white off)
     python cli.py flap 5
     python cli.py swivel right 3
     python cli.py reset
 
-Com o daemon rodando, ele e silenciado durante o comando e reaplica a cor
-atual da cabeca no fim (ver ibuddy/daemon_client.py).
+While the daemon is running it is silenced for the duration of the command and
+re-applies the current head color at the end (see ibuddy/daemon_client.py).
 """
 import sys
 import time
@@ -39,7 +39,7 @@ def run(action, args):
         elif action == "head":
             color = args[0] if args else "off"
             if color not in COLORS:
-                print(f"Cor invalida: {color}. Opcoes: {list(COLORS)}")
+                print(f"Invalid color: {color}. Options: {list(COLORS)}")
                 raise SystemExit(1)
             buddy.head_color(**COLORS[color])
             if color != "off":
@@ -53,7 +53,7 @@ def run(action, args):
         elif action == "reset":
             buddy.reset()
         else:
-            print(f"Acao desconhecida: {action}")
+            print(f"Unknown action: {action}")
             print(__doc__)
             raise SystemExit(1)
 
@@ -66,7 +66,7 @@ def main():
         with daemon_paused():
             run(sys.argv[1], sys.argv[2:])
     except IBuddyNotFoundError as e:
-        print(f"Erro: {e}")
+        print(f"Error: {e}")
         raise SystemExit(1)
 
 

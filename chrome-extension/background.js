@@ -1,16 +1,15 @@
 // iBuddy Bridge - service worker.
-// Le o uso da janela de 5h da conta Claude usando a sessao ja logada do
-// proprio navegador e envia ao daemon do i-buddy. Funciona a partir do
-// service worker (nao da pagina) para nao esbarrar no bloqueio Private
-// Network Access do Chrome ao falar com o localhost.
+// Reads the usage of your Claude account's 5-hour window using the browser's
+// own already logged-in session and sends it to the i-buddy daemon. It runs in
+// the service worker (not in the page) to avoid Chrome's Private Network Access
+// block when talking to localhost.
 //
-// Reacao a picos de consumo: em vez de esperar um intervalo fixo (o
-// chrome.alarms tem piso de ~1min, insuficiente para "consumindo tokens
-// loucamente"), mantemos uma conexao long-poll aberta com o daemon local
-// (/wait-activity) que so retorna quando uma resposta termina (ou a cada
-// ~25s como pulso de seguranca). Isso tambem mantem o service worker
-// "vivo" (fetch pendente reseta o timeout de ociosidade do MV3).
-// O alarme de 1min continua como rede de seguranca caso o loop pare.
+// Reacting to usage bursts: instead of waiting for a fixed interval (chrome.alarms
+// has a ~1 min floor, too slow for "burning through tokens"), we keep a long-poll
+// connection open to the local daemon (/wait-activity) that only returns when a
+// response finishes (or every ~25 s as a safety heartbeat). A pending fetch also
+// keeps the service worker "alive" (it resets the MV3 idle timeout).
+// The 1-minute alarm remains as a safety net in case the loop stops.
 
 const DAEMON = "http://127.0.0.1:8765";
 const POLL_MINUTES = 1;
@@ -31,7 +30,7 @@ async function postDaemon(path, body) {
       body: JSON.stringify(body || {}),
     });
   } catch (e) {
-    // daemon desligado - tudo bem, ignora silenciosamente
+    // daemon is off - fine, ignore silently
   }
 }
 
@@ -41,29 +40,28 @@ async function poll() {
     const orgs = await fetch("https://claude.ai/api/organizations", {
       credentials: "include",
     }).then((r) => r.json());
-    if (!Array.isArray(orgs) || !orgs.length || !orgs[0].uuid) return; // nao logado
+    if (!Array.isArray(orgs) || !orgs.length || !orgs[0].uuid) return; // not logged in
     const org = orgs[0].uuid;
     usage = await fetch(`https://claude.ai/api/organizations/${org}/usage`, {
       credentials: "include",
     }).then((r) => r.json());
   } catch (e) {
-    return; // sem sessao / offline - nao faz nada
+    return; // no session / offline - do nothing
   }
 
   const fh = usage && usage.five_hour;
   if (!fh || typeof fh.utilization !== "number") return;
 
-  // cor da cabeca conforme % de uso da janela de 5h
+  // head color according to the 5-hour window usage %
   await postDaemon("/token-level", { level: levelFor(fh.utilization) });
 
-  // coracao pulsa quando a janela de 5h renova. Tentamos antes comparar
-  // resets_at (o horario ISO do reset), mas essa string jitera por causa
-  // de arredondamento no backend - e quando o horario real de reset cai
-  // bem em cima de uma virada de minuto, esse jitter cruza a fronteira e
-  // dispara falso positivo A CADA poll (foi o que aconteceu: coracao
-  // martelando a cada 20-60s). Uso, ao contrario, so sobe dentro de uma
-  // janela - uma queda so acontece quando ela renova. Sinal mais direto
-  // e sem essa fragilidade de timestamp.
+  // the heart pulses when the 5-hour window renews. We first tried comparing
+  // resets_at (the ISO reset time), but that string jitters because of rounding
+  // in the backend - and when the real reset time falls right on a minute
+  // boundary the jitter crosses it and triggers a false positive on EVERY poll
+  // (that is what happened: the heart hammering every 20-60 s). Usage, on the
+  // other hand, only goes up within a window - a drop only happens when it
+  // renews. A more direct signal, without the timestamp fragility.
   const { lastUtilization } = await chrome.storage.local.get("lastUtilization");
   if (typeof lastUtilization === "number" && fh.utilization < lastUtilization - 1) {
     await postDaemon("/session-renewed", {});
@@ -74,7 +72,7 @@ async function poll() {
 let activityLoopRunning = false;
 
 async function activityLoop() {
-  if (activityLoopRunning) return; // ja tem um loop rodando, nao duplica
+  if (activityLoopRunning) return; // a loop is already running, don't duplicate
   activityLoopRunning = true;
   let since = 0;
   try {
@@ -85,15 +83,15 @@ async function activityLoop() {
         );
         const data = await r.json();
         since = typeof data.seq === "number" ? data.seq : since;
-        await poll(); // atividade real ou pulso de seguranca - relê o uso
+        await poll(); // real activity or safety heartbeat - re-read the usage
       } catch (e) {
-        // daemon desligado - espera um pouco antes de tentar de novo,
-        // pra nao girar em loop apertado gastando CPU a toa
+        // daemon is off - wait a bit before trying again, so we don't spin in
+        // a tight loop burning CPU for nothing
         await new Promise((res) => setTimeout(res, 5000));
       }
     }
   } finally {
-    activityLoopRunning = false; // nunca deveria chegar aqui (while true)
+    activityLoopRunning = false; // should never get here (while true)
   }
 }
 
@@ -112,6 +110,6 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name !== "poll") return;
   poll();
-  // rede de seguranca: se o long-poll tiver morrido por algum motivo, reinicia
+  // safety net: if the long-poll died for any reason, restart it
   if (!activityLoopRunning) activityLoop();
 });

@@ -1,12 +1,13 @@
-"""Demonstracao do i-buddy: uma pequena coreografia de ~40 segundos.
+"""i-buddy demo: a short ~40 second choreography.
 
-Rode com dois cliques no arquivo "Demo.bat" (ou: python demo.py).
+Run it by double-clicking "Demo.bat" (or: python demo.py).
+The text printed while it runs is in Portuguese on purpose (it was made as a gift).
 """
 import time
 from ibuddy import IBuddy, IBuddyNotFoundError
 from ibuddy.daemon_client import daemon_paused
 
-# (red, green, blue) na ordem do arco-iris possivel do i-buddy
+# (name shown on screen, head channels): every color the i-buddy can make
 RAINBOW = [
     ("vermelho", dict(red=True)),
     ("amarelo",  dict(red=True, green=True)),
@@ -18,36 +19,36 @@ RAINBOW = [
 ]
 
 
-def batimentos(buddy, vezes=4, cor=None):
-    """Coracao pulsando, opcionalmente com a cabeca acesa junto."""
-    cor = cor or {}
-    for _ in range(vezes):
-        buddy.set_state(heart=True, **cor)
+def heartbeats(buddy, times=4, color=None):
+    """Pulse the heart, optionally with the head lit at the same time."""
+    color = color or {}
+    for _ in range(times):
+        buddy.set_state(heart=True, **color)
         time.sleep(0.35)
-        buddy.set_state(heart=False, **cor)
+        buddy.set_state(heart=False, **color)
         time.sleep(0.35)
 
 
-def arco_iris(buddy, passo=0.7):
-    for nome, cor in RAINBOW:
-        print(f"   ... {nome}")
-        buddy.set_state(**cor)
-        time.sleep(passo)
+def rainbow(buddy, step=0.7):
+    for name, color in RAINBOW:
+        print(f"   ... {name}")
+        buddy.set_state(**color)
+        time.sleep(step)
 
 
-def bater_asas(buddy, vezes=5, intervalo=0.18, cor=None):
-    """Asas batendo com a cabeca colorida junto."""
-    cor = cor or {}
-    for _ in range(vezes):
-        buddy.set_state(wings="up", **cor)
-        time.sleep(intervalo)
-        buddy.set_state(wings="down", **cor)
-        time.sleep(intervalo)
+def flap_wings(buddy, times=5, interval=0.18, color=None):
+    """Flap the wings, optionally with the head lit at the same time."""
+    color = color or {}
+    for _ in range(times):
+        buddy.set_state(wings="up", **color)
+        time.sleep(interval)
+        buddy.set_state(wings="down", **color)
+        time.sleep(interval)
 
 
-def dancinha(buddy, vezes=3):
-    """Gira de um lado para o outro com cores alternadas."""
-    for i in range(vezes):
+def dance(buddy, times=3):
+    """Swivel from side to side with alternating colors."""
+    for _ in range(times):
         buddy.set_state(swivel="left", red=True, blue=True, heart=True)
         time.sleep(0.35)
         buddy.set_state(swivel="right", green=True, blue=True, heart=True)
@@ -55,13 +56,13 @@ def dancinha(buddy, vezes=3):
 
 
 def grand_finale(buddy):
-    """Tudo ao mesmo tempo: coracao, cores alternando e asas batendo."""
+    """Everything at once: heart, cycling colors and flapping wings."""
     for i in range(8):
-        _, cor = RAINBOW[i % len(RAINBOW)]
+        _, color = RAINBOW[i % len(RAINBOW)]
         wings = "up" if i % 2 == 0 else "down"
-        buddy.set_state(heart=(i % 2 == 0), wings=wings, **cor)
+        buddy.set_state(heart=(i % 2 == 0), wings=wings, **color)
         time.sleep(0.2)
-    # pose final: branco + coracao aceso
+    # final pose: white head + heart on
     buddy.set_state(heart=True, red=True, green=True, blue=True)
     time.sleep(2.5)
 
@@ -73,23 +74,23 @@ def main():
     print("=" * 46)
     print()
     try:
-        # se o daemon estiver rodando, ele fica quieto durante o show e volta
-        # a mostrar a cor de uso da cabeca no final
+        # if the daemon is running it stays quiet during the show and goes back
+        # to showing the usage color on the head at the end
         with daemon_paused(), IBuddy() as buddy:
             print("1. Batimentos do coracao...")
-            batimentos(buddy, vezes=4)
+            heartbeats(buddy, times=4)
 
             print("2. Arco-iris de cores...")
-            arco_iris(buddy)
+            rainbow(buddy)
 
             print("3. Batendo asas...")
-            bater_asas(buddy, vezes=6)
+            flap_wings(buddy, times=6)
 
             print("4. Dancinha...")
-            dancinha(buddy, vezes=3)
+            dance(buddy, times=3)
 
             print("5. Asas com luz azul...")
-            bater_asas(buddy, vezes=5, cor=dict(blue=True))
+            flap_wings(buddy, times=5, color=dict(blue=True))
 
             print("6. Grand finale!")
             grand_finale(buddy)

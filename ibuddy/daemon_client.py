@@ -1,9 +1,9 @@
-"""Cliente minimo do daemon, para cli.py e demo.py.
+"""Minimal client for the daemon, used by cli.py and demo.py.
 
-Eles falam direto com o HID. Com o daemon rodando (o normal, ele sobe com o
-Windows), os dois brigariam pelo aparelho e, ao terminar, o script deixaria a
-cabeca apagada. daemon_paused() silencia o daemon durante o script e, na saida,
-faz ele reaplicar a cor atual.
+Those scripts talk to the HID directly. With the daemon running (the normal
+case: it starts with Windows) the two would fight over the device and, when the
+script ended, it would leave the head dark. daemon_paused() silences the daemon
+while the script runs and, on exit, makes it re-apply the current color.
 """
 import contextlib
 import json
@@ -27,16 +27,16 @@ def _post(path, payload=None, timeout=0.5):
         urllib.request.urlopen(req, timeout=timeout).read()
         return True
     except (urllib.error.URLError, OSError):
-        return False  # daemon desligado: tudo bem, o script tem o aparelho so pra ele
+        return False  # daemon is off: fine, the script has the device to itself
 
 
 @contextlib.contextmanager
 def daemon_paused(seconds=300):
-    """Silencia o daemon durante o bloco. A pausa expira sozinha em 'seconds'
-    (protege contra um script que morreu sem chamar resume)."""
+    """Silence the daemon during the block. The pause expires on its own after
+    'seconds' (protects against a script that died without calling resume)."""
     paused = _post("/pause", {"seconds": seconds})
     if paused:
-        time.sleep(0.7)  # deixa terminar a escrita/meio-giro que estava em andamento
+        time.sleep(0.7)  # let the write / half swivel that was in flight finish
     try:
         yield paused
     finally:

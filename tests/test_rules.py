@@ -9,13 +9,14 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(classify("allow claude to write settings.json?"), "waiting")
 
     def test_input_prompts_are_waiting(self):
-        self.assertEqual(classify("Projeto X Claude is waiting for your input"), "waiting")
-        self.assertEqual(classify("Aguardando sua aprovação"), "waiting")
+        self.assertEqual(classify("Project X Claude is waiting for your input"), "waiting")
+        self.assertEqual(classify("Aguardando sua aprovação"), "waiting")   # Portuguese keyword
 
     def test_scheduled_tasks_are_ignored(self):
         self.assertEqual(classify("Scheduled task completed Morning brief"), "ignore")
 
     def test_anything_else_is_a_finished_response(self):
+        self.assertEqual(classify("Contract summary ready"), "done")
         self.assertEqual(classify("Resumo do contrato pronto"), "done")
         self.assertEqual(classify(""), "done")
         self.assertEqual(classify(None), "done")

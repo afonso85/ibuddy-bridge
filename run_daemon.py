@@ -1,12 +1,13 @@
-"""Daemon do iBuddy Bridge: fica rodando em segundo plano, escutando
-http://127.0.0.1:8765 e traduzindo pedidos em animacoes no hardware.
+"""iBuddy Bridge daemon: keeps running in the background, listening on
+http://127.0.0.1:8765 and turning requests into animations on the hardware.
 
-Uso: python run_daemon.py
-Para parar: Ctrl+C, ou  curl -X POST http://127.0.0.1:8765/shutdown
-(o dispositivo eh resetado ao estado neutro antes de sair)
+Usage: python run_daemon.py
+To stop: Ctrl+C, or  curl -X POST http://127.0.0.1:8765/shutdown
+(the device is reset to the neutral state before exiting)
 
-Variaveis de ambiente: IBUDDY_DEBUG=1 (log detalhado, inclui texto das
-notificacoes), IBUDDY_APP_AUMID (AUMID do app do Claude).
+Environment variables: IBUDDY_DEBUG=1 (verbose log, includes the notification
+text), IBUDDY_APP_AUMID (the Claude app's AUMID), IBUDDY_STALE_SECONDS (how long
+without a usage reading before the head starts blinking; default 300).
 """
 import logging
 import os
@@ -47,7 +48,7 @@ def main():
     log = logging.getLogger("ibuddy.daemon")
 
     if already_running():
-        print("Ja existe um daemon rodando. Encerrando esta instancia.")
+        print("A daemon is already running. Exiting this instance.")
         return 0
 
     worker = BuddyWorker()
@@ -58,33 +59,33 @@ def main():
         NotificationWatcher(worker).start()
         notif = "ok"
     except Exception as e:
-        notif = f"indisponivel ({e})"
-        log.warning("listener de notificacoes indisponivel: %s", e)
+        notif = f"unavailable ({e})"
+        log.warning("notification listener unavailable: %s", e)
 
     try:
         server = make_server(worker)
     except OSError:
-        # outra instancia ocupou a porta entre a checagem e agora
-        print("Ja existe um daemon rodando. Encerrando esta instancia.")
+        # another instance took the port between the check and now
+        print("A daemon is already running. Exiting this instance.")
         worker.shutdown()
         return 0
 
-    log.info("daemon iniciado - notificacoes: %s", notif)
-    print(f"iBuddy Bridge rodando em http://{HOST}:{PORT}")
-    print(f"Listener de notificacoes do Windows: {notif}")
+    log.info("daemon started - notifications: %s", notif)
+    print(f"iBuddy Bridge running at http://{HOST}:{PORT}")
+    print(f"Windows notification listener: {notif}")
     print(f"Log: {LOG_FILE}")
-    print("Ctrl+C para parar. (ou: curl -X POST http://127.0.0.1:8765/shutdown)")
+    print("Ctrl+C to stop. (or: curl -X POST http://127.0.0.1:8765/shutdown)")
 
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
-        print("Encerrando, resetando o i-buddy...")
+        print("Shutting down, resetting the i-buddy...")
         server.server_close()
         worker.shutdown()
         worker.join(timeout=3)
-        log.info("daemon encerrado")
+        log.info("daemon stopped")
 
 
 if __name__ == "__main__":
