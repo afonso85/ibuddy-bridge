@@ -1,10 +1,15 @@
-"""Dublês de teste: nenhum teste Python toca no hardware nem no relogio real
-(exceto o teste de regressao do worker, que usa tempos minusculos de proposito)."""
+"""Test doubles: no Python test touches the hardware or the real clock (except the
+worker regression test, which uses tiny times on purpose)."""
+import logging
+
 from ibuddy.driver import IBuddyNotFoundError
+
+# keeps expected warnings out of the test output (assertLogs still sees them)
+logging.getLogger("ibuddy").addHandler(logging.NullHandler())
 
 
 class FakeTime:
-    """Relogio controlavel: sleep() apenas avanca o tempo."""
+    """A controllable clock: sleep() just advances the time."""
 
     def __init__(self, start=1000.0):
         self.now = start
@@ -20,13 +25,13 @@ class FakeTime:
 
 
 class FakeDevice:
-    """Estado compartilhado entre 'reconexoes' (cada connect cria um FakeBuddy novo)."""
+    """State shared across "reconnections" (each connect creates a new FakeBuddy)."""
 
     def __init__(self):
-        self.writes = []            # cada set_state(**kw) vira um dict
-        self.connected = True       # False: connect() levanta IBuddyNotFoundError
-        self.break_writes = False   # True: set_state levanta IBuddyNotFoundError
-        self.attempts = 0           # tentativas de connect(), com sucesso ou nao
+        self.writes = []            # each set_state(**kw) becomes a dict
+        self.connected = True       # False: connect() raises IBuddyNotFoundError
+        self.break_writes = False   # True: set_state raises IBuddyNotFoundError
+        self.attempts = 0           # connect() attempts, successful or not
         self.connects = 0
 
     def factory(self):
@@ -45,13 +50,13 @@ class FakeBuddy:
     def connect(self):
         self.dev.attempts += 1
         if not self.dev.connected:
-            raise IBuddyNotFoundError("ausente")
+            raise IBuddyNotFoundError("absent")
         self.dev.connects += 1
         return self
 
     def set_state(self, **kw):
         if self.dev.break_writes:
-            raise IBuddyNotFoundError("falha de escrita")
+            raise IBuddyNotFoundError("write failed")
         self.dev.writes.append(kw)
 
     def reset(self):
@@ -65,7 +70,7 @@ class FakeBuddy:
 
 
 class FakeWorker:
-    """Registra o que o servidor HTTP pediu ao worker."""
+    """Records what the HTTP server asked the worker to do."""
 
     def __init__(self):
         self.calls = []

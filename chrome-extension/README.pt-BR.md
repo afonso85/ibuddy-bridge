@@ -48,8 +48,9 @@ dispara um falso positivo a cada leitura.
 
 ## Limitação
 
-Só atualiza com o Chrome aberto e logado. Se fechar o Chrome, a cor congela no
-último valor lido.
+Só atualiza com o Chrome aberto e logado. Se fechar o Chrome, a cabeça mantém a
+última cor lida mas passa a piscar após 5 minutos (é o jeito do daemon avisar que o
+valor está velho).
 
 ## Testes
 

@@ -49,8 +49,9 @@ false positive on every reading.
 
 ## Limitation
 
-It only updates while Chrome is open and logged in. If you close Chrome, the color
-freezes at the last value read.
+It only updates while Chrome is open and logged in. If you close Chrome, the head
+keeps the last color it read but starts blinking after 5 minutes (the daemon's way of
+saying the value is stale).
 
 ## Tests
 

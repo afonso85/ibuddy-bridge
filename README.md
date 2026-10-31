@@ -23,7 +23,7 @@ is required** — the stock Windows HID driver is enough.
 
 | Signal | Meaning | Data source |
 |---|---|---|
-| **Head** | 5-hour window usage: green < 50 %, blue 50–74 %, purple 75–84 %, red ≥ 85 % | Chrome extension |
+| **Head** | 5-hour window usage: green < 50 %, blue 50–74 %, purple 75–84 %, red ≥ 85 %. With no reading for 5 min (Chrome closed, logged out) it keeps its last color but **blinks** | Chrome extension |
 | **Heart** | The 5-hour window renewed | Chrome extension |
 | **Wings** | Claude finished a response (any conversation or tab in the app) | Windows notifications |
 | **Swivel** | Claude asked for permission or is waiting for you; repeats every 60 s for up to 10 min | Windows notifications |
@@ -106,7 +106,7 @@ extensions and local programs (curl, Python) get through.
 
 | Route | Effect |
 |---|---|
-| `GET /status` | health: connection, color, waiting, pause, age of the last successful write to the device |
+| `GET /status` | health: connection, color, stale reading, waiting, pause, age of the last successful write to the device |
 | `GET /wait-activity?since=N&timeout=S` | long-poll: returns when a response finishes |
 | `POST /token-level` `{"level": "low\|medium\|high\|critical\|off"}` | head color |
 | `POST /session-renewed` `{"times": 3}` | pulse the heart |
@@ -122,6 +122,8 @@ extensions and local programs (curl, Python) get through.
   log keeps only the classification, never the text.
 - `IBUDDY_APP_AUMID` — if your Claude app has a different identifier
   (default: `Claude_pzs8sxrjxfjjc!Claude`).
+- `IBUDDY_STALE_SECONDS` — how long without a usage reading before the head starts
+  blinking (default: 300).
 - Timing constants (swivel, expiry, reconnection) at the top of
   `ibuddy/worker.py`; the keywords that mean "waiting for you" in
   `ibuddy/rules.py` (the defaults match English and Portuguese notifications).
@@ -131,7 +133,8 @@ The log lives in `.state/daemon.log` (rotating, 1 MB × 3) and is **not versione
 ## Known limitations
 
 - **Head and heart only update while Chrome is open and logged in.** Close it and
-  the color freezes at the last value.
+  the head keeps its last color but starts blinking after 5 minutes, so you know the
+  value is stale.
 - **Wings depend on Windows showing the "response ready" notification.** If it
   doesn't appear (for example with the app in focus, or in Do Not Disturb), the
   figurine won't flap.
@@ -150,6 +153,8 @@ The log lives in `.state/daemon.log` (rotating, 1 MB × 3) and is **not versione
   device last accepted a write; `connected: false` means the daemon is trying to
   reconnect (every 30 s).
 - `.state/daemon.log` — reconnections, warnings and errors.
+- Head blinking: no usage reading for 5 minutes. Check that Chrome is open, logged in
+  to `claude.ai`, and that the extension is loaded.
 - Wings/swivel do nothing: check the notification permission and run with
   `IBUDDY_DEBUG=1`.
 

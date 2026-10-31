@@ -17,7 +17,7 @@ você.
 
 | Sinal | Significado | Origem do dado |
 |---|---|---|
-| **Cabeça** | Uso da janela de 5 h: verde < 50 %, azul 50–74 %, roxo 75–84 %, vermelho ≥ 85 % | extensão do Chrome |
+| **Cabeça** | Uso da janela de 5 h: verde < 50 %, azul 50–74 %, roxo 75–84 %, vermelho ≥ 85 %. Sem leitura há 5 min (Chrome fechado, deslogado), mantém a última cor mas **pisca** | extensão do Chrome |
 | **Coração** | A janela de 5 h renovou | extensão do Chrome |
 | **Asas** | O Claude terminou uma resposta (qualquer conversa ou aba do app) | notificações do Windows |
 | **Giro** | O Claude pediu permissão ou espera sua resposta; repete a cada 60 s, por até 10 min | notificações do Windows |
@@ -84,7 +84,7 @@ do Chrome e programas locais (curl, Python) passam.
 
 | Rota | Efeito |
 |---|---|
-| `GET /status` | saúde: conexão, cor, espera, pausa, idade da última escrita no aparelho |
+| `GET /status` | saúde: conexão, cor, leitura velha, espera, pausa, idade da última escrita no aparelho |
 | `GET /wait-activity?since=N&timeout=S` | long-poll: retorna quando uma resposta termina |
 | `POST /token-level` `{"level": "low\|medium\|high\|critical\|off"}` | cor da cabeça |
 | `POST /session-renewed` `{"times": 3}` | coração pulsa |
@@ -100,6 +100,8 @@ do Chrome e programas locais (curl, Python) passam.
   padrão o log guarda só a classificação, nunca o texto.
 - `IBUDDY_APP_AUMID` — se o seu app do Claude tiver outro identificador
   (padrão: `Claude_pzs8sxrjxfjjc!Claude`).
+- `IBUDDY_STALE_SECONDS` — quanto tempo sem leitura de uso até a cabeça começar a
+  piscar (padrão: 300).
 - Constantes de tempo (giro, expiração, reconexão) no topo de `ibuddy/worker.py`;
   palavras que indicam "esperando você" em `ibuddy/rules.py`.
 
@@ -107,7 +109,9 @@ O log fica em `.state/daemon.log` (rotativo, 1 MB × 3) e **não é versionado**
 
 ## Limitações conhecidas
 
-- **Cabeça e coração só atualizam com o Chrome aberto e logado.** Se fechar, a cor congela.
+- **Cabeça e coração só atualizam com o Chrome aberto e logado.** Se fechar, a cabeça
+  mantém a última cor mas passa a piscar após 5 minutos, para você saber que o valor
+  está velho.
 - **Asas dependem de o Windows exibir a notificação de "resposta pronta".** Se
   ela não aparecer (por exemplo, com o app em foco ou no modo Não Perturbe), o
   boneco não bate as asas.
@@ -125,6 +129,8 @@ O log fica em `.state/daemon.log` (rotativo, 1 MB × 3) e **não é versionado**
   tempo o aparelho aceitou uma escrita; `connected: false` = o daemon está
   tentando reconectar (a cada 30 s).
 - `.state/daemon.log` — reconexões, avisos e erros.
+- Cabeça piscando: sem leitura de uso há 5 minutos. Confira se o Chrome está aberto,
+  logado no `claude.ai`, e se a extensão está carregada.
 - Nada acontece nas asas/giro: confira a permissão de notificações e rode com
   `IBUDDY_DEBUG=1`.
 
