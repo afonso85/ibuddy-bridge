@@ -1,0 +1,17 @@
+# estado e logs do daemon: contem dados pessoais (nunca versionar)
+.state/
+*.log
+*.log.*
+
+# Python / Node
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+
+# editor / SO
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

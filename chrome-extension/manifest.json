@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "iBuddy Bridge - Uso do Claude",
+  "version": "1.0",
+  "description": "Le o uso da janela de 5h do Claude e envia ao daemon do i-buddy (cor da cabeca + coracao).",
+  "permissions": ["alarms", "storage"],
+  "host_permissions": [
+    "https://claude.ai/*",
+    "http://127.0.0.1:8765/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

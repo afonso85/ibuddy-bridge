@@ -1,0 +1,9 @@
+# Windows 10/11. Testado com Python 3.13.
+# (o pacote antigo "winsdk" NAO compila no Python 3.13 - por isso o pywinrt modular abaixo)
+pywinusb>=0.4.2; sys_platform == "win32"
+winrt-runtime>=3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation>=3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation.Collections>=3.2.1; sys_platform == "win32"
+winrt-Windows.ApplicationModel>=3.2.1; sys_platform == "win32"
+winrt-Windows.UI.Notifications>=3.2.1; sys_platform == "win32"
+winrt-Windows.UI.Notifications.Management>=3.2.1; sys_platform == "win32"
